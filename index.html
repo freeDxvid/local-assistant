@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lokaler Assistent</title>
+<style>
+  :root { --bg:#f6f6f4; --card:#fff; --text:#1d1d1f; --muted:#6e6e73; --accent:#2f6fde; --me:#2f6fde; --line:#e3e3e0; --act:#eef4ea; --acttext:#2d5a1f; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1b1b1d; --card:#262628; --text:#f2f2f2; --muted:#9a9aa0; --accent:#5b8ff0; --me:#3a6fd8; --line:#3a3a3c; --act:#25331f; --acttext:#a9d394; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; height:100vh; display:flex; flex-direction:column; }
+  header { padding:12px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; }
+  header h1 { font-size:16px; margin:0; font-weight:600; flex:1; }
+  header button { background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:4px 10px; cursor:pointer; }
+  #log { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; max-width:760px; width:100%; margin:0 auto; }
+  .msg { padding:9px 13px; border-radius:14px; max-width:85%; white-space:pre-wrap; word-wrap:break-word; }
+  .me { background:var(--me); color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+  .bot { background:var(--card); border:1px solid var(--line); align-self:flex-start; border-bottom-left-radius:4px; }
+  .act { background:var(--act); color:var(--acttext); font-size:13px; align-self:flex-start; border-radius:10px; padding:6px 11px; max-width:85%; white-space:pre-wrap; }
+  .file { display:block; color:var(--accent); cursor:pointer; text-decoration:underline; margin:2px 0; }
+  .hint { color:var(--muted); font-size:13px; text-align:center; margin-top:20px; }
+  .hint span { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:4px 10px; margin:4px; cursor:pointer; }
+  form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); max-width:760px; width:100%; margin:0 auto; }
+  input { flex:1; padding:11px 14px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--text); font-size:15px; outline:none; }
+  input:focus { border-color:var(--accent); }
+  form button { background:var(--accent); color:#fff; border:0; border-radius:12px; padding:0 18px; font-size:15px; cursor:pointer; }
+  form button:disabled { opacity:.5; }
+</style>
+</head>
+<body>
+<header><h1>Lokaler Assistent</h1><button id="reset" title="Gespräch neu beginnen">Neu</button></header>
+<div id="log">
+  <div class="hint" id="hint">Alles bleibt auf diesem Mac. Zum Beispiel:<br>
+    <span>Dienstag 23. von 2–5 Uhr Zahnarzt, Erinnerung 4 Tage vorher</span>
+    <span>Ich suche eine Präsentation, die ich gestern heruntergeladen habe, zum Thema Marketing</span>
+    <span>Erinnere mich morgen um 9 an die Steuererklärung</span>
+  </div>
+</div>
+<form id="f"><input id="q" placeholder="Schreib, was ich tun soll…" autocomplete="off" autofocus><button id="send">Senden</button></form>
+<script>
+const log = document.getElementById('log'), q = document.getElementById('q'), send = document.getElementById('send');
+const icons = { create_calendar_event:'📅', create_reminder:'🔔', search_files:'🔎', open_file:'📂' };
+
+function add(cls, text) {
+  const d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = text;
+  log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
+}
+function addAction(a) {
+  const d = document.createElement('div'); d.className = 'act';
+  const paths = [...a.result.matchAll(/PFAD: (.+)/g)].map(m => m[1]);
+  if (paths.length) {
+    d.textContent = (icons[a.tool] || '⚙️') + ' Gefunden (klicken zum Öffnen):';
+    for (const p of paths) {
+      const l = document.createElement('a'); l.className = 'file'; l.textContent = p.split('/').pop();
+      l.title = p; l.onclick = () => post('/open', { path: p });
+      d.appendChild(l);
+    }
+  } else {
+    d.textContent = (icons[a.tool] || '⚙️') + ' ' + a.result;
+  }
+  log.appendChild(d);
+}
+async function post(url, body) {
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j;
+}
+async function ask(text) {
+  document.getElementById('hint')?.remove();
+  add('me', text); q.value = ''; send.disabled = true;
+  const wait = add('bot', '…');
+  try {
+    const j = await post('/chat', { message: text });
+    wait.remove();
+    j.actions.forEach(addAction);
+    if (j.answer) add('bot', j.answer);
+  } catch (e) { wait.textContent = '⚠️ ' + e.message; }
+  send.disabled = false; q.focus(); log.scrollTop = log.scrollHeight;
+}
+document.getElementById('f').onsubmit = e => { e.preventDefault(); if (q.value.trim()) ask(q.value.trim()); };
+document.querySelectorAll('.hint span').forEach(s => s.onclick = () => ask(s.textContent));
+document.getElementById('reset').onclick = async () => { await post('/reset', {}); log.innerHTML = ''; };
+</script>
+</body>
+</html>
