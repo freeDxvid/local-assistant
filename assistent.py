@@ -7,6 +7,7 @@ Nur Python-Standardbibliothek, keine zusätzlichen Pakete.
 """
 
 import datetime as dt
+import inspect
 import json
 import os
 import re
@@ -18,6 +19,7 @@ from pathlib import Path
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 MODEL = os.environ.get("ASSISTENT_MODEL", "qwen2.5:3b")
 PORT = int(os.environ.get("ASSISTENT_PORT", "8765"))
+DRY_RUN = os.environ.get("ASSISTENT_TESTLAUF") == "1"  # Kalender/Erinnerungen nicht wirklich ändern
 CALENDAR_NAME = os.environ.get("ASSISTENT_KALENDER", "")  # leer = erster beschreibbarer Kalender
 
 def _gpu_option():
@@ -112,6 +114,8 @@ def as_date(var, d):
 
 
 def osascript(script):
+    if DRY_RUN:
+        return CALENDAR_NAME or "Privat"
     r = subprocess.run(["osascript", "-"], input=script, capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip() or "AppleScript-Fehler")
@@ -163,6 +167,8 @@ def create_calendar_event(title, start_time, end_time=None, date=None, day=None,
     if alarm_min:
         when = start - dt.timedelta(minutes=alarm_min)
         msg += " Erinnerung am %s um %s Uhr." % (fmt_date(when.date()), when.strftime("%H:%M"))
+        if when < dt.datetime.now():
+            msg += " Achtung: Dieser Zeitpunkt ist schon vorbei."
     return msg
 
 
@@ -500,7 +506,9 @@ def run_tool(name, args):
     fn = TOOLS.get(name)
     if not fn:
         return "Unbekanntes Werkzeug: %s" % name
-    args = {k: v for k, v in args.items() if v not in (None, "")}
+    # Kleine Modelle erfinden gern Parameter – alles Unbekannte weglassen.
+    known = inspect.signature(fn).parameters
+    args = {k: v for k, v in args.items() if v not in (None, "") and k in known}
     try:
         return fn(**args)
     except TypeError as e:
@@ -533,6 +541,14 @@ class Chat:
                 result = run_tool(name, args)
                 actions.append({"tool": name, "args": args, "result": result})
                 messages.append({"role": "tool", "tool_name": name, "content": result})
+            if not any(a["result"].startswith("Fehler") for a in actions):
+                # Erfolg: Das Ergebnis spricht für sich – eine zweite Modellrunde
+                # würde nur Zeit kosten und holprig formulieren.
+                found = any("PFAD:" in a["result"] for a in actions)
+                answer = "Klick auf eine Datei, um sie zu öffnen." if found else ""
+                self.history.append({"role": "assistant",
+                                     "content": "\n".join(a["result"] for a in actions)})
+                return {"answer": answer, "actions": actions}
         return {"answer": "Das hat zu viele Schritte gebraucht – bitte genauer formulieren.",
                 "actions": actions}
 
