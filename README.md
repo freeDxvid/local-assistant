@@ -4,17 +4,21 @@ A small, private AI assistant for macOS that runs entirely on your own machine. 
 
 Nothing you type leaves your computer. There is no cloud service, account or subscription. The only time it needs the internet is a one-off download of the language model.
 
+![The assistant booking an appointment, setting a reminder and finding a downloaded presentation](docs/screenshot.png)
+
 > **Note:** This is a personal project built for private use. The interface and the language it understands are German. This README is in English so the project is accessible to a wider audience.
 
 ---
 
 ## What it can do
 
+The assistant understands German, so the examples below are given as you would actually type them, followed by a translation.
+
 | You type… | It does… |
 |---|---|
-| *„Dienstag 27. von 2–5 Uhr Zahnarzt, Erinnerung 4 Tage vorher“* | Adds a dentist appointment to Calendar on Tuesday the 27th from 14:00 to 17:00, with an alert four days before. |
-| *„Erinnere mich morgen um 9 an die Steuererklärung“* | Creates a reminder in the Reminders app for 09:00 tomorrow. |
-| *„Ich suche eine Präsentation, die ich gestern heruntergeladen habe, zum Thema Marketing“* | Searches your Downloads folder for presentations from the last two days that mention marketing, and lists them. One click opens a file. |
+| *„Dienstag 27. von 2–5 Uhr Zahnarzt, Erinnerung 4 Tage vorher“*<br><sub>“Tuesday 27th, 2 to 5, dentist, remind me 4 days before”</sub> | Adds a dentist appointment to Calendar on Tuesday the 27th from 14:00 to 17:00, with an alert four days before. |
+| *„Erinnere mich morgen um 9 an die Steuererklärung“*<br><sub>“Remind me about my tax return tomorrow at 9”</sub> | Creates a reminder in the Reminders app for 09:00 tomorrow. |
+| *„Ich suche eine Präsentation, die ich gestern heruntergeladen habe, zum Thema Marketing“*<br><sub>“I'm looking for a presentation on marketing that I downloaded yesterday”</sub> | Searches your Downloads folder for presentations from the last two days that mention marketing, and lists them. One click opens a file. |
 
 It also notices when you have made a slip. If you write *“Tuesday the 23rd”* and the 23rd is actually a Friday, it won't guess. It asks whether you meant Friday the 23rd or Tuesday the 27th.
 
@@ -78,6 +82,7 @@ Settings are optional and are passed as environment variables:
 | `ASSISTENT_KALENDER` | first writable calendar | Name of the calendar to add appointments to. |
 | `ASSISTENT_GPU` | `auto` | `auto`, `an` (on) or `aus` (off). |
 | `ASSISTENT_PORT` | `8765` | Port for the web interface. |
+| `ASSISTENT_TESTLAUF` | off | Set to `1` for a dry run: the assistant behaves as usual but leaves Calendar and Reminders untouched. Handy for demos. |
 
 Example:
 
@@ -102,6 +107,7 @@ ASSISTENT_MODEL=qwen2.5:1.5b ./start.command
 assistent.py     Server, rule-based parser, tools and Ollama integration
 index.html       Chat interface (plain HTML/CSS/JS, light and dark mode)
 start.command    One-click launcher: starts Ollama, fetches the model, opens the browser
+docs/            Screenshot for this README
 ```
 
 ---
