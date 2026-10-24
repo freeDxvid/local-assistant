@@ -6,7 +6,7 @@ Nothing you type leaves your computer. There is no cloud service, account or sub
 
 ![The assistant booking an appointment, setting a reminder and finding a downloaded presentation](docs/screenshot.png)
 
-> **Note:** This is a personal project built for private use. The interface and the language it understands are German. This README is in English so the project is accessible to a wider audience.
+> **Note:** This is a personal project built for private use. The interface and the language it understands are German. This README is in English.
 
 ---
 
